@@ -1,6 +1,22 @@
-import os
 import argparse
+from colorama import Fore, Back, Style
+import csv
+import os
 import re
+import time
+
+log_file = f'log_{time.time()}.csv'
+
+
+def create_log_file(log_file):
+    with open(f'{log_file}', mode='w') as file:
+        fieldnames = ['old_path', 'new_path']
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+
+        try:
+            writer.writeheader()
+        except Exception as ex:
+            print(ex)
 
 # Convert string argument to boolean
 
@@ -19,13 +35,19 @@ def str2bool(v):
 # Rename a single file in a directory.
 # TODO: Make OS agnostic.
 def file_rename(dir, filename, search, replace):
+    if dir == '.':
+        dir = os.getcwd()
+
     old_path = f'{dir}/{filename[0]}'
     new_name = filename[0].replace(search[0], replace[0])
     new_path = f'{dir}/{new_name}'
 
     try:
         os.rename(old_path, new_path)
-        print(f'Rename of the file "{old_path}" to "{new_path}" is complete.')
+        print(Fore.YELLOW +
+              f'Rename of the file "{old_path}" to "{new_path}" is complete.')
+
+        csv_write(new_path, old_path, log_file)
     except Exception as ex:
         print(ex)
 
@@ -33,6 +55,9 @@ def file_rename(dir, filename, search, replace):
 
 
 def files_rename(dir, search, replace):
+    if dir == '.':
+        dir = os.getcwd()
+
     try:
         for filename in os.listdir(dir):
             # Only try to rename files that match searh parameter
@@ -42,12 +67,23 @@ def files_rename(dir, search, replace):
                 new_path = f'{dir}/{new_name}'
                 os.rename(old_path, new_path)
                 print(
-                    f'Rename of the file "{old_path}" to "{new_path}" is complete.')
+                    Fore.YELLOW + f'Rename of the file "{old_path}" to "{new_path}" is complete.')
+                csv_write(new_path, old_path, log_file)
             else:
                 continue
 
     except Exception as ex:
         print(ex)
+
+
+def csv_write(new_path, old_path, filename='log'):
+    with open(f'{filename}', mode='a') as file:
+        fieldnames = ['old_path', 'new_path']
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+        try:
+            writer.writerow({'old_path': old_path, 'new_path': new_path})
+        except Exception as ex:
+            print(ex)
 
 
 parser = argparse.ArgumentParser(description='File rename options')
@@ -67,8 +103,8 @@ args = parser.parse_args()
 # https://docs.python.org/3/library/__main__.html
 if __name__ == "__main__":
     # execute only if run as a script
+    create_log_file(log_file)
     if str2bool(args.all[0]) == True:
         files_rename(args.dir, args.search, args.replace)
     else:
         file_rename(args.dir, args.file, args.search, args.replace)
-
